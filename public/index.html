@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>cookie-clicker</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@700;800&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0a0a0f;
+      --surface: #111118;
+      --border: #1e1e2e;
+      --accent: #fffc00;
+      --accent2: #00ffe0;
+      --text: #e8e8f0;
+      --muted: #555570;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'DM Mono', monospace;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image:
+        linear-gradient(var(--border) 1px, transparent 1px),
+        linear-gradient(90deg, var(--border) 1px, transparent 1px);
+      background-size: 40px 40px;
+      opacity: 0.4;
+      z-index: 0;
+    }
+
+    body::after {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background: radial-gradient(ellipse 60% 50% at 50% 50%, rgba(255,252,0,0.04) 0%, transparent 70%);
+      z-index: 0;
+      pointer-events: none;
+    }
+
+    .container {
+      position: relative;
+      z-index: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 32px;
+      width: 100%;
+      max-width: 480px;
+      padding: 24px;
+    }
+
+    .logo-area {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+      animation: fadeDown 0.6s ease both;
+    }
+
+    .ghost-icon {
+      width: 64px;
+      height: 64px;
+      filter: drop-shadow(0 0 18px rgba(255,252,0,0.5));
+      animation: float 3s ease-in-out infinite;
+    }
+
+    @keyframes float {
+      0%, 100% { transform: translateY(0px); }
+      50% { transform: translateY(-6px); }
+    }
+
+    .title {
+      font-family: 'Syne', sans-serif;
+      font-size: 2.4rem;
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      color: var(--accent);
+      text-shadow: 0 0 40px rgba(255,252,0,0.3);
+    }
+
+    .subtitle {
+      font-size: 0.72rem;
+      color: var(--muted);
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+    }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 28px;
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      animation: fadeUp 0.6s 0.15s ease both;
+    }
+
+    .status-row {
+      display: flex;
+      align-items: center;
+      font-size: 0.75rem;
+      color: var(--muted);
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #333;
+      display: inline-block;
+      margin-right: 6px;
+      flex-shrink: 0;
+      transition: background 0.3s;
+    }
+    .status-dot.ready   { background: var(--accent2); box-shadow: 0 0 8px var(--accent2); }
+    .status-dot.loading { background: var(--accent); animation: pulse 1s infinite; }
+    .status-dot.error   { background: #ff4455; }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.3; }
+    }
+
+    .launch-btn {
+      background: var(--accent);
+      color: #000;
+      border: none;
+      border-radius: 8px;
+      padding: 14px 24px;
+      font-family: 'Syne', sans-serif;
+      font-size: 1rem;
+      font-weight: 700;
+      cursor: pointer;
+      width: 100%;
+      transition: transform 0.15s, box-shadow 0.15s, opacity 0.15s;
+      box-shadow: 0 4px 24px rgba(255,252,0,0.25);
+    }
+    .launch-btn:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 8px 32px rgba(255,252,0,0.4); }
+    .launch-btn:active:not(:disabled) { transform: translateY(0); }
+    .launch-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    .info-row {
+      display: flex;
+      gap: 8px;
+      align-items: flex-start;
+      font-size: 0.72rem;
+      color: var(--muted);
+      line-height: 1.5;
+      padding-top: 4px;
+      border-top: 1px solid var(--border);
+    }
+    .info-row span:first-child { color: var(--accent2); flex-shrink: 0; }
+
+    /* Proxy iframe */
+    .frame-wrapper {
+      position: fixed;
+      inset: 0;
+      z-index: 100;
+      display: none;
+      flex-direction: column;
+      background: var(--bg);
+    }
+    .frame-wrapper.active { display: flex; }
+
+    .toolbar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+
+    .toolbar-btn {
+      background: var(--border);
+      border: none;
+      color: var(--text);
+      border-radius: 6px;
+      padding: 6px 10px;
+      font-family: 'DM Mono', monospace;
+      font-size: 0.75rem;
+      cursor: pointer;
+      transition: background 0.15s;
+      white-space: nowrap;
+    }
+    .toolbar-btn:hover { background: #2a2a3e; }
+    .toolbar-btn.close-btn { margin-left: auto; color: #ff4455; }
+
+    .url-display {
+      flex: 1;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 6px 10px;
+      font-size: 0.72rem;
+      color: var(--muted);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    #proxy-frame {
+      flex: 1;
+      border: none;
+      width: 100%;
+    }
+
+    @keyframes fadeDown {
+      from { opacity: 0; transform: translateY(-16px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(16px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <div class="logo-area">
+    <svg class="ghost-icon" viewBox="0 0 24 24" fill="#FFFC00" xmlns="http://www.w3.org/2000/svg">
+      <path d="M12.166 3C8.756 3 6 5.756 6 9.166v5.265c-.523.277-1.09.463-1.68.548-.213.03-.37.211-.37.426 0 .766.94 1.4 2.8 1.887.13.463.272 1.009.4 1.393.065.196.249.315.453.315.1 0 .202-.027.291-.083.332-.21.71-.316 1.098-.316.418 0 .818.117 1.192.348C10.78 19.579 11.455 20 12.5 20c1.044 0 1.721-.421 2.316-.95.374-.231.774-.348 1.192-.348.388 0 .766.106 1.098.316.09.056.19.083.291.083.204 0 .388-.119.453-.315.128-.384.27-.93.4-1.393 1.86-.487 2.8-1.121 2.8-1.887 0-.215-.157-.396-.37-.426-.59-.085-1.157-.271-1.68-.548V9.166C19 5.756 16.244 3 12.166 3z"/>
+    </svg>
+    <div class="title">cookie-clicker</div>
+    <div class="subtitle">Private · Secure · No IP leaks</div>
+  </div>
+
+  <div class="card">
+    <div class="status-row">
+      <span class="status-dot" id="status-dot"></span>
+      <span id="status-text">Initializing...</span>
+    </div>
+
+    <button class="launch-btn" id="launch-btn" disabled>Open Snapchat</button>
+
+    <div class="info-row">
+      <span>⚡</span>
+      <span>Traffic routes through a public Wisp server via Epoxy transport. Your real IP is never exposed to Snapchat.</span>
+    </div>
+  </div>
+</div>
+
+<!-- Proxy UI -->
+<div class="frame-wrapper" id="frame-wrapper">
+  <div class="toolbar">
+    <button class="toolbar-btn" onclick="document.getElementById('proxy-frame').contentWindow?.history.back()">← Back</button>
+    <button class="toolbar-btn" onclick="document.getElementById('proxy-frame').contentWindow?.history.forward()">Forward →</button>
+    <button class="toolbar-btn" onclick="document.getElementById('proxy-frame').contentWindow?.location.reload()">↺</button>
+    <div class="url-display" id="url-display">snapchat.com/web</div>
+    <button class="toolbar-btn close-btn" onclick="closeProxy()">✕ Close</button>
+  </div>
+  <iframe id="proxy-frame"
+    sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-modals allow-top-navigation">
+  </iframe>
+</div>
+
+<script src="/config.js"></script>
+<script src="/baremux/index.js"></script>
+<script src="/scramjet/scramjet.all.js"></script>
+<script>
+(async () => {
+  const dot    = document.getElementById("status-dot");
+  const status = document.getElementById("status-text");
+  const btn    = document.getElementById("launch-btn");
+
+  function setStatus(state, msg) {
+    dot.className = "status-dot " + state;
+    status.textContent = msg;
+  }
+
+  if (!("serviceWorker" in navigator)) {
+    setStatus("error", "Service workers not supported");
+    return;
+  }
+
+  try {
+    setStatus("loading", "Registering service worker...");
+    await navigator.serviceWorker.register("/scramjet.sw.js", { scope: "/" });
+    await navigator.serviceWorker.ready;
+
+    setStatus("loading", "Setting up Wisp transport...");
+
+    // bare-mux v2: use BareMuxConnection to set epoxy transport pointing at public Wisp
+    const conn = new BareMux.BareMuxConnection("/baremux/worker.js");
+    await conn.setTransport("/epoxy/index.mjs", [{ wisp: CONFIG.WISP_URL }]);
+
+    setStatus("loading", "Configuring Scramjet...");
+
+    const { ScramjetController } = $scramjetLoadController();
+    const controller = new ScramjetController({
+      prefix: CONFIG.SCRAM_PREFIX,
+      files: {
+        wasm: "/scramjet/scramjet.wasm.wasm",
+        all:  "/scramjet/scramjet.all.js",
+        sync: "/scramjet/scramjet.sync.js",
+      },
+    });
+
+    await controller.init();
+    window._controller = controller;
+
+    setStatus("ready", "Ready — Wisp tunnel active");
+    btn.disabled = false;
+    btn.onclick = () => openProxy(controller);
+
+  } catch (err) {
+    console.error(err);
+    setStatus("error", "Setup failed: " + err.message);
+  }
+})();
+
+function openProxy(controller) {
+  const encoded = controller.encodeUrl(CONFIG.TARGET_URL);
+  document.getElementById("frame-wrapper").classList.add("active");
+  const frame = document.getElementById("proxy-frame");
+  frame.src = encoded;
+  frame.addEventListener("load", () => {
+    try {
+      const raw = frame.contentWindow?.location?.href || "";
+      const clean = decodeURIComponent(raw.replace(location.origin + "/scram/", "")).slice(0, 80);
+      document.getElementById("url-display").textContent = clean || "snapchat.com";
+    } catch(_) {}
+  });
+}
+
+function closeProxy() {
+  document.getElementById("frame-wrapper").classList.remove("active");
+  document.getElementById("proxy-frame").src = "about:blank";
+}
+</script>
+</body>
+</html>
